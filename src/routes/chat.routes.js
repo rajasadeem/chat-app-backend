@@ -10,4 +10,8 @@ chatRouter.get(
   chatController.getChatWithSingleUser
 );
 
+chatRouter.get("/", isAuthenticated, chatController.getAllChatsOfUser);
+
+chatRouter.post("/message", isAuthenticated, chatController.sendMessage);
+
 export default chatRouter;

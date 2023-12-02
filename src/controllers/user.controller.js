@@ -1,22 +1,14 @@
-import User from "../model/user.model.js";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcrypt";
+import User from "../database/models/user.model.js";
+import { userService } from "../services/user.service.js";
 
 export const userController = {
   register: async (req, res) => {
     try {
-      const { email } = req.body;
-      const isExist = await User.findOne({ email });
-
-      if (isExist) throw new Error("email already taken");
-
-      req.body.password = await bcrypt.hash(req.body.password, 10);
-
-      const user = await User.create(req.body);
+      const user = await userService.add(req.body);
 
       return res.status(201).json({
         status: 201,
-        message: "User Created",
+        message: "Registered successfully, Please login to continue",
         data: user,
       });
     } catch (error) {
@@ -26,32 +18,17 @@ export const userController = {
       });
     }
   },
+
   login: async (req, res) => {
     try {
-      const { email } = req.body;
-      const isExist = await User.findOne({ email });
-
-      if (!isExist) throw new Error("Incorrect Email");
-      const validatePassword = await bcrypt.compare(
-        req.body.password,
-        isExist.password
-      );
-
-      if (!validatePassword) throw new Error("password doesn't match");
-
-      const payload = {
-        id: isExist._id,
-        name: isExist.name,
-        email: isExist.email,
-      };
-      const accessToken = await jwt.sign(payload, "MySecretKeyForJWTToken");
+      const user = await userService.login(req.body);
 
       return res.status(200).json({
         status: 200,
-        message: "Login Successfull",
+        message: "Login Successfully",
         data: {
-          token: accessToken,
-          user: payload,
+          token: user.token,
+          user: user.user,
         },
       });
     } catch (error) {
@@ -61,9 +38,13 @@ export const userController = {
       });
     }
   },
-  getUserById: async (req, res) => {
+
+  getUserData: async (req, res) => {
     try {
-      const user = await User.findById(req.params.id);
+      let user;
+      req.query.id
+        ? (user = await userService.findById(req.query.id))
+        : (user = await userService.findById(req.user.id));
 
       if (!user) throw new Error("User not found");
 
@@ -71,6 +52,23 @@ export const userController = {
         status: 200,
         message: "user reterieved",
         data: user,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        status: 400,
+        message: error.message,
+      });
+    }
+  },
+
+  getAllUsers: async (req, res) => {
+    try {
+      const users = await userService.findAll();
+
+      return res.status(200).json({
+        status: 200,
+        message: "Users reterieved",
+        data: users,
       });
     } catch (error) {
       return res.status(400).json({

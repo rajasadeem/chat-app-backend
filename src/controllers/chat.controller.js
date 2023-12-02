@@ -1,10 +1,21 @@
-import Chat from "../model/chat.model.js";
+import Chat from "../database/models/chat.model.js";
+import User from "../database/models/user.model.js";
+import { userService } from "../services/user.service.js";
 
 export const chatController = {
   getChatWithSingleUser: async (req, res) => {
     try {
-      const { roomId } = req.query;
-      const chat = await Chat.find({ roomId });
+      // const chat = await Chat.find({
+      //   $or: [
+      //     {
+      //       $and: [{ sender: req.user.id }, { receiver: req.params.receiver }],
+      //     },
+      //     {
+      //       $and: [{ sender: req.params.receiver }, { receiver: req.user.id }],
+      //     },
+      //   ],
+      // });
+      const chat = await Chat.find({ roomId: req.params.roomId });
 
       return res.status(200).json({
         status: 200,
@@ -19,16 +30,96 @@ export const chatController = {
     }
   },
 
-  //   getAllChatsOfUser: async (req, res) => {
-  //     try {
-  //       const { sender, receiver } = req.query;
-  //       const chats = await Chat.find({ $and: [{ sender }, { receiver }] });
+  getAllChatsOfUser: async (req, res) => {
+    try {
+      const { id } = req.user;
+      const chatsData = await Chat.find({
+        $or: [{ sender: id }, { receiver: id }],
+      }).populate("receiver");
 
-  //     } catch (error) {
-  //       return res.status(400).json({
-  //         status: 400,
-  //         message: error.message,
-  //       });
-  //     }
-  //   },
+      const chatsByRoomId = {};
+
+      // Iterate through the chatsData array
+      chatsData.forEach((chat) => {
+        const { roomId } = chat;
+
+        // Check if the roomId key exists, if not, create an empty array
+        chatsByRoomId[roomId] = chatsByRoomId[roomId] || {
+          roomId,
+          receiver: "",
+          messages: [],
+        };
+
+        // Push the chat into the array corresponding to its roomId
+        chatsByRoomId[roomId].messages.push(chat);
+      });
+
+      // Convert the object values to an array
+      const formattedData = Object.values(chatsByRoomId);
+
+      const response = await Promise.all(
+        formattedData.map(async (e) => {
+          const receiverId = e.roomId.replace(id, "");
+          const userData = await userService.findById(receiverId);
+          e.receiver = userData.name;
+          return e;
+        })
+      );
+
+      return res.status(200).json({
+        status: 200,
+        message: "Chats retrieved",
+        data: response,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        status: 400,
+        message: error.message,
+      });
+    }
+  },
+
+  sendMessage: async (req, res) => {
+    try {
+      const { id } = req.user;
+      req.body.sender = id;
+      const { sender, receiver } = req.body;
+
+      if (!sender || !receiver)
+        throw new Error("Sender and Receiver both are required");
+
+      const chat = await Chat.find({
+        $or: [
+          { $and: [{ sender }, { receiver }] },
+          { $and: [{ sender: receiver }, { receiver: sender }] },
+        ],
+      });
+      // console.log(chat);
+      if (chat.length > 0) {
+        req.body.roomId = chat[0].roomId;
+      } else {
+        const newChatId = sender.concat(receiver);
+        req.body.roomId = newChatId;
+      }
+      const newMessage = await Chat.create(req.body);
+      // if (!newMessage) {
+      //   throw new Error("error sending message...");
+      // } else {
+      //   // io.to(roomId).emit("receiveMessage", newMessage);
+      //   io.emit(`receiveMessage:${sender}`, newMessage);
+      //   io.emit(`receiveMessage${receiver}`, newMessage);
+      // }
+
+      const activeChat = await Chat.find({ roomId: req.body.roomId });
+
+      return res.status(200).json({
+        chat: activeChat,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        status: 400,
+        message: error.message,
+      });
+    }
+  },
 };

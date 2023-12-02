@@ -1,20 +1,38 @@
-import Chat from "../model/chat.model.js";
+import Chat from "../database/models/chat.model.js";
 
 export const socketEvents = (io) => {
   io.on("connection", (socket) => {
     console.log("socket connected");
-    socket.on("joinRoom", ({ roomId }) => {
-      socket.join(roomId);
-      console.log(`Socket joined room ${roomId}`);
-    });
+    // socket.on("joinRoom", ({ roomId }) => {
+    //   socket.join(roomId);
+    //   console.log(`Socket joined room ${roomId}`);
+    // });
     socket.on("sendMessage", async (data) => {
       try {
-        const { roomId } = data;
+        const { sender, receiver } = data;
+
+        if (!sender || !receiver)
+          throw new Error("Sender and Receiver both are required");
+
+        const chat = await Chat.find({
+          $or: [
+            { $and: [{ sender }, { receiver }] },
+            { $and: [{ sender: receiver }, { receiver: sender }] },
+          ],
+        });
+        if (chat.length >= 0) {
+          data.roomId = chat[0].roomId;
+        } else {
+          const newChatId = sender.concat(receiver);
+          data.roomId = newChatId;
+        }
         const newMessage = await Chat.create(data);
         if (!newMessage) {
           throw new Error("error sending message...");
         } else {
-          io.to(roomId).emit("receiveMessage", newMessage);
+          // io.to(roomId).emit("receiveMessage", newMessage);
+          io.emit(`receiveMessage:${sender}`, newMessage);
+          io.emit(`receiveMessage${receiver}`, newMessage);
         }
       } catch (error) {
         socket.emit("errorMessage", {

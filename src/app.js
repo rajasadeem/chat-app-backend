@@ -1,5 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
@@ -7,18 +6,14 @@ import userRouter from "./routes/user.routes.js";
 import morgan from "morgan";
 import { socketEvents } from "./chat/chat.events.js";
 import chatRouter from "./routes/chat.routes.js";
-
-dotenv.config();
+import { appConfig } from "./config/app.config.js";
 
 const app = express();
 
-app.use(morgan("dev"));
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+appConfig(app);
 
 //Route Test
-app.use("/", async (req, res) => {
+app.get("/", async (req, res) => {
   res.json("Server Running");
 });
 

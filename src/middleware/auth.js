@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../model/user.model.js";
+import User from "../database/models/user.model.js";
 
 export const isAuthenticated = async (req, res, next) => {
   try {
@@ -7,7 +7,7 @@ export const isAuthenticated = async (req, res, next) => {
 
     if (!token) throw new Error("Access Denied");
 
-    const decoded = jwt.verify(token, process.env.ACCESS_TOKEN);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const userExist = await User.findById(decoded.id);
 
