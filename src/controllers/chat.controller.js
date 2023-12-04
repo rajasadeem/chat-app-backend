@@ -1,26 +1,17 @@
 import Chat from "../database/models/chat.model.js";
-import User from "../database/models/user.model.js";
 import { userService } from "../services/user.service.js";
 
 export const chatController = {
   getChatWithSingleUser: async (req, res) => {
     try {
-      // const chat = await Chat.find({
-      //   $or: [
-      //     {
-      //       $and: [{ sender: req.user.id }, { receiver: req.params.receiver }],
-      //     },
-      //     {
-      //       $and: [{ sender: req.params.receiver }, { receiver: req.user.id }],
-      //     },
-      //   ],
-      // });
-      const chat = await Chat.find({ roomId: req.params.roomId });
+      const chat = await Chat.find({ roomId: req.params.roomId })
+        .sort({ createdAt: -1 })
+        .limit(100);
 
       return res.status(200).json({
         status: 200,
         message: "chat reterieved",
-        data: chat,
+        data: chat.reverse(),
       });
     } catch (error) {
       return res.status(400).json({
@@ -39,22 +30,19 @@ export const chatController = {
 
       const chatsByRoomId = {};
 
-      // Iterate through the chatsData array
       chatsData.forEach((chat) => {
         const { roomId } = chat;
 
-        // Check if the roomId key exists, if not, create an empty array
         chatsByRoomId[roomId] = chatsByRoomId[roomId] || {
           roomId,
           receiver: "",
+          lastMessage: {},
           messages: [],
         };
 
-        // Push the chat into the array corresponding to its roomId
         chatsByRoomId[roomId].messages.push(chat);
       });
 
-      // Convert the object values to an array
       const formattedData = Object.values(chatsByRoomId);
 
       const response = await Promise.all(
@@ -62,6 +50,8 @@ export const chatController = {
           const receiverId = e.roomId.replace(id, "");
           const userData = await userService.findById(receiverId);
           e.receiver = userData.name;
+          const lastMessage = e.messages[e.messages.length - 1];
+          e.lastMessage = lastMessage;
           return e;
         })
       );
@@ -79,47 +69,47 @@ export const chatController = {
     }
   },
 
-  sendMessage: async (req, res) => {
-    try {
-      const { id } = req.user;
-      req.body.sender = id;
-      const { sender, receiver } = req.body;
+  // sendMessage: async (req, res) => {
+  //   try {
+  //     const { id } = req.user;
+  //     req.body.sender = id;
+  //     const { sender, receiver } = req.body;
 
-      if (!sender || !receiver)
-        throw new Error("Sender and Receiver both are required");
+  //     if (!sender || !receiver)
+  //       throw new Error("Sender and Receiver both are required");
 
-      const chat = await Chat.find({
-        $or: [
-          { $and: [{ sender }, { receiver }] },
-          { $and: [{ sender: receiver }, { receiver: sender }] },
-        ],
-      });
-      // console.log(chat);
-      if (chat.length > 0) {
-        req.body.roomId = chat[0].roomId;
-      } else {
-        const newChatId = sender.concat(receiver);
-        req.body.roomId = newChatId;
-      }
-      const newMessage = await Chat.create(req.body);
-      // if (!newMessage) {
-      //   throw new Error("error sending message...");
-      // } else {
-      //   // io.to(roomId).emit("receiveMessage", newMessage);
-      //   io.emit(`receiveMessage:${sender}`, newMessage);
-      //   io.emit(`receiveMessage${receiver}`, newMessage);
-      // }
+  //     const chat = await Chat.find({
+  //       $or: [
+  //         { $and: [{ sender }, { receiver }] },
+  //         { $and: [{ sender: receiver }, { receiver: sender }] },
+  //       ],
+  //     });
+  //     // console.log(chat);
+  //     if (chat.length > 0) {
+  //       req.body.roomId = chat[0].roomId;
+  //     } else {
+  //       const newChatId = sender.concat(receiver);
+  //       req.body.roomId = newChatId;
+  //     }
+  //     const newMessage = await Chat.create(req.body);
+  //     if (!newMessage) {
+  //       throw new Error("error sending message...");
+  //     } else {
+  //       // io.to(roomId).emit("receiveMessage", newMessage);
+  //       io.emit(`receiveMessage:${sender}`, newMessage);
+  //       io.emit(`receiveMessage${receiver}`, newMessage);
+  //     }
 
-      const activeChat = await Chat.find({ roomId: req.body.roomId });
+  //     const activeChat = await Chat.find({ roomId: req.body.roomId });
 
-      return res.status(200).json({
-        chat: activeChat,
-      });
-    } catch (error) {
-      return res.status(400).json({
-        status: 400,
-        message: error.message,
-      });
-    }
-  },
+  //     return res.status(200).json({
+  //       chat: activeChat,
+  //     });
+  //   } catch (error) {
+  //     return res.status(400).json({
+  //       status: 400,
+  //       message: error.message,
+  //     });
+  //   }
+  // },
 };

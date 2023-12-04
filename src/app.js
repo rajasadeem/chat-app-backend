@@ -20,11 +20,19 @@ app.get("/", async (req, res) => {
 //http server for socket.io
 const server = http.createServer(app);
 
-const io = new Server(server, {
+export const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["POST", "GET"],
   },
+});
+
+io.on("connection", (socket) => {
+  console.log("Socket connected");
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected");
+  });
 });
 
 //socket events for messages

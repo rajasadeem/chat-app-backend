@@ -12,6 +12,6 @@ chatRouter.get(
 
 chatRouter.get("/", isAuthenticated, chatController.getAllChatsOfUser);
 
-chatRouter.post("/message", isAuthenticated, chatController.sendMessage);
+// chatRouter.post("/message", isAuthenticated, chatController.sendMessage);
 
 export default chatRouter;

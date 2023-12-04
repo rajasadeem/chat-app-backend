@@ -3,10 +3,7 @@ import Chat from "../database/models/chat.model.js";
 export const socketEvents = (io) => {
   io.on("connection", (socket) => {
     console.log("socket connected");
-    // socket.on("joinRoom", ({ roomId }) => {
-    //   socket.join(roomId);
-    //   console.log(`Socket joined room ${roomId}`);
-    // });
+
     socket.on("sendMessage", async (data) => {
       try {
         const { sender, receiver } = data;
@@ -32,7 +29,7 @@ export const socketEvents = (io) => {
         } else {
           // io.to(roomId).emit("receiveMessage", newMessage);
           io.emit(`receiveMessage:${sender}`, newMessage);
-          io.emit(`receiveMessage${receiver}`, newMessage);
+          io.emit(`receiveMessage:${receiver}`, newMessage);
         }
       } catch (error) {
         socket.emit("errorMessage", {
